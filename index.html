@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalkulator online i stoper online — za darmo</title>
+<meta name="description" content="Darmowy kalkulator online z historią obliczeń oraz stoper online z okrążeniami. Działa na telefonie i komputerze, bez instalacji.">
+<meta name="theme-color" content="#d7263d">
+<meta property="og:title" content="Kalkulator online i stoper online">
+<meta property="og:description" content="Szybki kalkulator z historią i dokładny stoper z okrążeniami. Za darmo, bez instalacji.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23d7263d'/><text x='50' y='68' font-size='56' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'>=</text></svg>">
+<style>
+:root{
+  --paper:#f4f6fa; --card:#ffffff; --ink:#14213d; --mut:#5d6882; --line:#dfe4ee;
+  --key:#eef1f7; --key-hi:#e2e7f1; --op:#14213d; --op-ink:#ffffff;
+  --red:#d7263d; --red-hi:#b81d32; --ok:#1a8a5a;
+  --r:16px;
+  --num:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#0e1526;--card:#16203a;--ink:#eef2fb;--mut:#9aa6c4;--line:#27335a;--key:#1f2b4d;--key-hi:#2a3860;--op:#eef2fb;--op-ink:#14213d;--red:#ff4d63;--red-hi:#e83a50;--ok:#3ccf91}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:var(--num);line-height:1.5;display:flex;flex-direction:column;align-items:center;padding:0 14px 40px}
+.top{width:100%;max-width:440px;padding:22px 2px 14px}
+.top h1{font-size:1.15rem;margin:0 0 14px;font-weight:700;letter-spacing:.01em}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--key);border-radius:14px;padding:4px;gap:4px}
+.tabs button{border:0;background:none;color:var(--mut);font:inherit;font-weight:700;padding:11px 8px;border-radius:11px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(20,33,61,.18)}
+.tabs button:focus-visible,.key:focus-visible,.pill:focus-visible,.big:focus-visible,.link:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+main{width:100%;max-width:440px}
+section[hidden]{display:none}
+.panel{background:var(--card);border-radius:22px;padding:16px;box-shadow:0 8px 28px rgba(20,33,61,.10);border:1px solid var(--line)}
+
+/* ---------- kalkulator ---------- */
+.screen{padding:10px 8px 14px;text-align:right;min-height:112px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.expr{color:var(--mut);font-size:1.05rem;min-height:1.6em;word-break:break-all}
+.val{font-size:3.1rem;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:clip}
+.val.err{font-size:1.4rem;color:var(--red);white-space:normal}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.key{border:0;border-radius:var(--r);height:64px;font:inherit;font-size:1.45rem;font-weight:600;background:var(--key);color:var(--ink);cursor:pointer;transition:background .12s,transform .08s}
+.key:hover{background:var(--key-hi)}
+.key:active{transform:scale(.96)}
+.key.op{background:var(--op);color:var(--op-ink)}
+.key.op:hover{filter:brightness(1.15)}
+.key.fn{color:var(--red);background:var(--key)}
+.key.eq{background:var(--red);color:#fff}
+.key.eq:hover{background:var(--red-hi)}
+.key.zero{grid-column:span 2}
+.hist{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.hist-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.hist-h b{font-size:.95rem}
+.link{border:0;background:none;color:var(--red);font:inherit;font-weight:700;cursor:pointer;padding:4px 2px}
+.hist ul{list-style:none;margin:0;padding:0;max-height:170px;overflow:auto}
+.hist li{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums;cursor:pointer}
+.hist li span:first-child{color:var(--mut);word-break:break-all}
+.hist li span:last-child{font-weight:700;white-space:nowrap}
+.hist .empty{color:var(--mut);cursor:default;border:0}
+
+/* ---------- stoper ---------- */
+.dial{position:relative;width:min(300px,78vw);aspect-ratio:1;margin:8px auto 10px}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial .track{fill:none;stroke:var(--key);stroke-width:10}
+.dial .arc{fill:none;stroke:var(--red);stroke-width:10;stroke-linecap:round;stroke-dasharray:var(--c) var(--c);stroke-dashoffset:var(--c)}
+.dial .read{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.time{font-size:clamp(2.2rem,11vw,3rem);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.time small{font-size:.55em;color:var(--red)}
+.state{color:var(--mut);font-size:.9rem;min-height:1.4em}
+.controls{display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-top:6px}
+.pill{border:0;border-radius:var(--r);height:58px;font:inherit;font-size:1.05rem;font-weight:700;cursor:pointer;background:var(--key);color:var(--ink)}
+.pill:disabled{opacity:.45;cursor:not-allowed}
+.pill.go{background:var(--red);color:#fff}
+.pill.stop{background:var(--op);color:var(--op-ink)}
+.laps{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
+.laps table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.laps th{font-size:.82rem;color:var(--mut);font-weight:600;text-align:right;padding:4px 2px}
+.laps th:first-child,.laps td:first-child{text-align:left}
+.laps td{padding:8px 2px;border-bottom:1px dashed var(--line);text-align:right}
+.laps tr.best td{color:var(--ok);font-weight:700}
+.laps tr.worst td{color:var(--red);font-weight:700}
+.laps .scroll{max-height:220px;overflow:auto}
+.laps .empty{color:var(--mut);text-align:center;padding:10px 0;margin:0}
+.hint{margin:14px 2px 0;color:var(--mut);font-size:.85rem}
+
+/* ---------- opis ---------- */
+.about{width:100%;max-width:440px;margin-top:26px;color:var(--mut);font-size:.93rem}
+.about h2{font-size:1rem;color:var(--ink);margin:0 0 6px}
+.about p{margin:0 0 12px}
+footer{margin-top:22px;color:var(--mut);font-size:.82rem}
+@media(max-width:380px){.key{height:56px;font-size:1.3rem}.val{font-size:2.5rem}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Kalkulator i stoper online</h1>
+  <div class="tabs" role="tablist" aria-label="Wybierz narzędzie">
+    <button role="tab" id="tab-kalk" aria-selected="true" aria-controls="kalk">Kalkulator</button>
+    <button role="tab" id="tab-stoper" aria-selected="false" aria-controls="stoper">Stoper</button>
+  </div>
+</header>
+
+<main>
+  <!-- KALKULATOR -->
+  <section id="kalk" role="tabpanel" aria-labelledby="tab-kalk">
+    <div class="panel">
+      <div class="screen" aria-live="polite">
+        <div class="expr" id="expr"></div>
+        <div class="val" id="val">0</div>
+      </div>
+      <div class="pad" id="pad">
+        <button class="key fn" data-k="C" aria-label="Wyczyść wszystko">C</button>
+        <button class="key fn" data-k="back" aria-label="Usuń ostatnią cyfrę">⌫</button>
+        <button class="key fn" data-k="%" aria-label="Procent">%</button>
+        <button class="key op" data-k="÷" aria-label="Dziel">÷</button>
+
+        <button class="key" data-k="7">7</button>
+        <button class="key" data-k="8">8</button>
+        <button class="key" data-k="9">9</button>
+        <button class="key op" data-k="×" aria-label="Mnóż">×</button>
+
+        <button class="key" data-k="4">4</button>
+        <button class="key" data-k="5">5</button>
+        <button class="key" data-k="6">6</button>
+        <button class="key op" data-k="−" aria-label="Odejmij">−</button>
+
+        <button class="key" data-k="1">1</button>
+        <button class="key" data-k="2">2</button>
+        <button class="key" data-k="3">3</button>
+        <button class="key op" data-k="+" aria-label="Dodaj">+</button>
+
+        <button class="key" data-k="±" aria-label="Zmień znak">±</button>
+        <button class="key" data-k="0">0</button>
+        <button class="key" data-k="," aria-label="Przecinek">,</button>
+        <button class="key eq" data-k="=" aria-label="Oblicz">=</button>
+      </div>
+      <div class="hist">
+        <div class="hist-h"><b>Historia obliczeń</b><button class="link" id="clearHist" type="button">Wyczyść historię</button></div>
+        <ul id="hist"></ul>
+      </div>
+    </div>
+    <p class="hint">Skróty klawiszowe: cyfry, + − * /, przecinek, Enter (=), Backspace, Esc (C).</p>
+  </section>
+
+  <!-- STOPER -->
+  <section id="stoper" role="tabpanel" aria-labelledby="tab-stoper" hidden>
+    <div class="panel">
+      <div class="dial">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="52"></circle>
+          <circle class="arc" id="arc" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="read">
+          <div class="time" id="time" role="timer" aria-live="off">00:00<small>,00</small></div>
+          <div class="state" id="state">Gotowy</div>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="pill" id="lapBtn" type="button" disabled>Okrążenie</button>
+        <button class="pill go" id="goBtn" type="button">Start</button>
+      </div>
+      <div class="controls" style="grid-template-columns:1fr;margin-top:10px">
+        <button class="pill" id="resetBtn" type="button" disabled>Wyzeruj</button>
+      </div>
+      <div class="laps">
+        <div id="lapsBox"><p class="empty">Okrążenia pojawią się tutaj.</p></div>
+      </div>
+    </div>
+    <p class="hint">Skróty klawiszowe: Spacja (start/stop), L (okrążenie), R (wyzeruj).</p>
+  </section>
+</main>
+
+<section class="about">
+  <h2>Darmowy kalkulator i stoper w przeglądarce</h2>
+  <p>Kalkulator liczy z zachowaniem kolejności działań (mnożenie i dzielenie przed dodawaniem i odejmowaniem), używa polskiego przecinka dziesiętnego i zapamiętuje ostatnie obliczenia. Kliknij wynik w historii, aby użyć go ponownie.</p>
+  <p>Stoper mierzy czas z dokładnością do setnych części sekundy, zapisuje okrążenia i zaznacza najlepsze oraz najgorsze. Działa także po przełączeniu na inną kartę. Nic nie jest wysyłane na serwer.</p>
+</section>
+<footer>© <span id="yr"></span> Kalkulator i stoper online</footer>
+
+<script>
+(function(){
+const $=(s,e=document)=>e.querySelector(s);
+
+/* ================= zakładki ================= */
+const tabs={kalk:$('#tab-kalk'),stoper:$('#tab-stoper')},secs={kalk:$('#kalk'),stoper:$('#stoper')};
+let active='kalk';
+function show(name,push){
+  active=name;
+  for(const k in tabs){const on=k===name;tabs[k].setAttribute('aria-selected',on);secs[k].hidden=!on}
+  document.title=name==='kalk'?'Kalkulator online — za darmo':'Stoper online — za darmo';
+  if(push)history.replaceState(null,'','#'+(name==='kalk'?'kalkulator':'stoper'));
+}
+tabs.kalk.onclick=()=>show('kalk',true);tabs.stoper.onclick=()=>show('stoper',true);
+show(location.hash==='#stoper'?'stoper':'kalk');
+$('#yr').textContent=new Date().getFullYear();
+
+/* ================= kalkulator ================= */
+const exprEl=$('#expr'),valEl=$('#val'),histEl=$('#hist');
+let tokens=[],cur='',justEq=false,err=false;
+let hist=[];try{hist=JSON.parse(localStorage.getItem('kalk_hist')||'[]')}catch(e){}
+const saveHist=()=>{try{localStorage.setItem('kalk_hist',JSON.stringify(hist.slice(0,30)))}catch(e){}};
+
+const fmt=s=>{ // "-1234.5" -> "-1 234,5"
+  if(s===''||s==null)return '0';
+  let neg=s[0]==='-';if(neg)s=s.slice(1);
+  let [i,d]=s.split('.');
+  i=i.replace(/\B(?=(\d{3})+(?!\d))/g,'\u00a0');
+  return (neg?'−':'')+i+(d!==undefined?','+d:'');
+};
+const show2=n=>{ // number -> string
+  if(!isFinite(n))return null;
+  let r=Number(n.toPrecision(12));
+  let s=String(r);
+  if(/e/i.test(s))s=r.toExponential(6).replace('.',',').replace('e+','e');
+  return s;
+};
+function render(){
+  valEl.classList.toggle('err',!!err);
+  if(err){valEl.textContent=err;exprEl.textContent='';return}
+  const e=tokens.map(t=>/^[+−×÷]$/.test(t)?' '+t+' ':fmt(t)).join('');
+  exprEl.textContent=e;
+  const shown=cur!==''?cur:(tokens.length&&!/^[+−×÷]$/.test(tokens[tokens.length-1])?tokens[tokens.length-1]:'0');
+  valEl.textContent=fmt(shown).replace(/^−?/,m=>m);
+  valEl.style.fontSize='';
+  const w=valEl.parentElement.clientWidth-16;
+  let fs=parseFloat(getComputedStyle(valEl).fontSize);
+  while(valEl.scrollWidth>w&&fs>20){fs-=2;valEl.style.fontSize=fs+'px'}
+}
+function evaluate(t){
+  // 1) × ÷  2) + −
+  let a=[t[0]];
+  for(let i=1;i<t.length;i+=2){
+    const op=t[i],n=parseFloat(t[i+1]);
+    if(op==='×')a.push(String(parseFloat(a.pop())*n));
+    else if(op==='÷'){if(n===0)throw new Error('div0');a.push(String(parseFloat(a.pop())/n))}
+    else a.push(op,String(n));
+  }
+  let r=parseFloat(a[0]);
+  for(let i=1;i<a.length;i+=2){r=a[i]==='+'?r+parseFloat(a[i+1]):r-parseFloat(a[i+1])}
+  return r;
+}
+function clearAll(){tokens=[];cur='';justEq=false;err=false;render()}
+function digit(d){
+  if(err)clearAll();
+  if(justEq){tokens=[];cur='';justEq=false}
+  if(cur==='0')cur=d;else if(cur==='-0')cur='-'+d;
+  else{if(cur.replace(/[-.]/g,'').length>=15)return;cur+=d}
+  render();
+}
+function dot(){
+  if(err)clearAll();
+  if(justEq){tokens=[];cur='';justEq=false}
+  if(cur.includes('.'))return;
+  cur=(cur===''||cur==='-')?(cur+'0.'):cur+'.';render();
+}
+function operator(o){
+  if(err)return;
+  if(justEq){justEq=false}
+  if(cur!==''){tokens.push(cur.endsWith('.')?cur.slice(0,-1):cur);cur='';tokens.push(o)}
+  else if(tokens.length){
+    if(/^[+−×÷]$/.test(tokens[tokens.length-1]))tokens[tokens.length-1]=o;else tokens.push(o);
+  }else{tokens.push('0',o)}
+  render();
+}
+function equals(){
+  if(err)return;
+  let t=tokens.slice();
+  if(cur!=='')t.push(cur.endsWith('.')?cur.slice(0,-1):cur);
+  if(t.length&&/^[+−×÷]$/.test(t[t.length-1]))t.pop();
+  if(t.length<2)return;
+  try{
+    const r=evaluate(t),s=show2(r);
+    if(s===null)throw new Error('big');
+    const line=t.map(x=>/^[+−×÷]$/.test(x)?' '+x+' ':fmt(x)).join('');
+    hist.unshift({e:line,r:s});hist=hist.slice(0,30);saveHist();drawHist();
+    tokens=[s];cur='';justEq=true;
+    render();exprEl.textContent=line+' =';
+  }catch(ex){
+    err=ex.message==='div0'?'Nie można dzielić przez zero':'Wynik jest zbyt duży';
+    tokens=[];cur='';render();
+  }
+}
+function back(){
+  if(err)return clearAll();
+  if(justEq){return}
+  if(cur!==''){cur=cur.slice(0,-1);if(cur==='-')cur=''}
+  else if(tokens.length){ // cofnij operator i wróć do liczby
+    if(/^[+−×÷]$/.test(tokens[tokens.length-1])){tokens.pop();cur=tokens.pop()||''}
+  }
+  render();
+}
+function percent(){
+  if(err||cur==='')return;
+  const n=parseFloat(cur)/100;cur=show2(n)||cur;render();
+}
+function sign(){
+  if(err)return;
+  if(justEq&&tokens.length===1){const v=tokens[0];tokens[0]=v[0]==='-'?v.slice(1):'-'+v;render();return}
+  if(cur===''){cur='-'}else cur=cur[0]==='-'?cur.slice(1):'-'+cur;
+  if(cur==='-'){valEl.textContent='−0'} else render();
+}
+function press(k){
+  if(/^\d$/.test(k))digit(k);
+  else if(k===',')dot();
+  else if(k==='C')clearAll();
+  else if(k==='back')back();
+  else if(k==='%')percent();
+  else if(k==='±')sign();
+  else if(k==='=')equals();
+  else operator(k);
+}
+$('#pad').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(b)press(b.dataset.k)});
+
+function drawHist(){
+  histEl.innerHTML='';
+  if(!hist.length){const li=document.createElement('li');li.className='empty';li.textContent='Brak obliczeń. Wynik zapisze się po naciśnięciu =.';histEl.appendChild(li);return}
+  hist.forEach(h=>{
+    const li=document.createElement('li');li.title='Użyj wyniku';
+    const a=document.createElement('span');a.textContent=h.e+' =';
+    const b=document.createElement('span');b.textContent=fmt(h.r);
+    li.append(a,b);
+    li.onclick=()=>{tokens=[];cur=h.r;justEq=false;err=false;render()};
+    histEl.appendChild(li);
+  });
+}
+$('#clearHist').onclick=()=>{hist=[];saveHist();drawHist()};
+drawHist();render();
+
+/* ================= stoper ================= */
+const timeEl=$('#time'),stateEl=$('#state'),arc=$('#arc'),goBtn=$('#goBtn'),lapBtn=$('#lapBtn'),resetBtn=$('#resetBtn'),lapsBox=$('#lapsBox');
+const C=2*Math.PI*52;arc.style.setProperty('--c',C);arc.style.strokeDashoffset=C;
+let running=false,startT=0,base=0,raf=0,laps=[],lastLapAt=0;
+const pad=(n,l=2)=>String(n).padStart(l,'0');
+function parts(ms){
+  const cs=Math.floor(ms/10)%100,s=Math.floor(ms/1000)%60,m=Math.floor(ms/60000)%60,h=Math.floor(ms/3600000);
+  return {h,m,s,cs};
+}
+function fmtT(ms){const p=parts(ms);return (p.h?p.h+':'+pad(p.m):pad(p.m))+':'+pad(p.s)+','+pad(p.cs)}
+function elapsed(){return base+(running?performance.now()-startT:0)}
+function paint(){
+  const ms=elapsed(),p=parts(ms);
+  timeEl.innerHTML=(p.h?p.h+':'+pad(p.m):pad(p.m))+':'+pad(p.s)+'<small>,'+pad(p.cs)+'</small>';
+  arc.style.strokeDashoffset=C*(1-((ms%60000)/60000));
+}
+function loop(){paint();if(running)raf=requestAnimationFrame(loop)}
+function start(){
+  running=true;startT=performance.now();
+  goBtn.textContent='Stop';goBtn.className='pill stop';
+  lapBtn.disabled=false;resetBtn.disabled=true;stateEl.textContent='Mierzę czas…';
+  cancelAnimationFrame(raf);loop();
+}
+function stop(){
+  base=elapsed();running=false;cancelAnimationFrame(raf);paint();
+  goBtn.textContent='Wznów';goBtn.className='pill go';
+  lapBtn.disabled=true;resetBtn.disabled=false;stateEl.textContent='Zatrzymany';
+}
+function reset(){
+  running=false;cancelAnimationFrame(raf);base=0;laps=[];lastLapAt=0;
+  goBtn.textContent='Start';goBtn.className='pill go';lapBtn.disabled=true;resetBtn.disabled=true;
+  stateEl.textContent='Gotowy';paint();drawLaps();
+}
+function lap(){
+  if(!running)return;
+  const t=elapsed();laps.unshift({n:laps.length+1,split:t-lastLapAt,total:t});lastLapAt=t;drawLaps();
+}
+function drawLaps(){
+  if(!laps.length){lapsBox.innerHTML='<p class="empty">Okrążenia pojawią się tutaj.</p>';return}
+  let best=-1,worst=-1;
+  if(laps.length>1){
+    const sp=laps.map(l=>l.split);best=sp.indexOf(Math.min(...sp));worst=sp.indexOf(Math.max(...sp));
+  }
+  lapsBox.innerHTML='<div class="scroll"><table><thead><tr><th>Nr</th><th>Okrążenie</th><th>Czas łączny</th></tr></thead><tbody>'+
+    laps.map((l,i)=>`<tr class="${i===best?'best':i===worst?'worst':''}"><td>${l.n}</td><td>${fmtT(l.split)}</td><td>${fmtT(l.total)}</td></tr>`).join('')+'</tbody></table></div>';
+}
+goBtn.onclick=()=>running?stop():start();
+lapBtn.onclick=lap;resetBtn.onclick=reset;
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&running){cancelAnimationFrame(raf);loop()}});
+paint();
+
+/* ================= klawiatura ================= */
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(active==='kalk'){
+    const k=e.key;
+    if(/^\d$/.test(k))press(k);
+    else if(k===','||k==='.')press(',');
+    else if(k==='+')press('+');
+    else if(k==='-')press('−');
+    else if(k==='*'||k==='x'||k==='X')press('×');
+    else if(k==='/'){e.preventDefault();press('÷')}
+    else if(k==='%')press('%');
+    else if(k==='Enter'||k==='='){e.preventDefault();press('=')}
+    else if(k==='Backspace')press('back');
+    else if(k==='Escape')press('C');
+  }else{
+    if(e.key===' '&&tag!=='button'){e.preventDefault();goBtn.click()}
+    else if(e.key==='l'||e.key==='L'){lapBtn.click()}
+    else if(e.key==='r'||e.key==='R'){resetBtn.click()}
+  }
+});
+window.addEventListener('hashchange',()=>show(location.hash==='#stoper'?'stoper':'kalk'));
+window.addEventListener('resize',render);
+})();
+</script>
+</body>
+</html>
